@@ -1,5 +1,5 @@
 /** 
- * A client library for i3-wm that deserializes into idomatic Vala response objects. 
+ * A client library for rofication
  */
 namespace Lago {
   enum ROFICATION_COMMAND {
@@ -10,14 +10,29 @@ namespace Lago {
     RPC_ERROR
   }
 
+  public class NotificationDesc {
+    public int64 id { get; private set; }
+    public string summary { get; private set; }
+    public string body { get; private set; }
+    public string application { get; private set; }
+    public int64 urgency { get; private set; }    
+    // TODO add 'actions' (list of string)
+
+    internal NotificationDesc(Json.Object responseJson) {
+      id = responseJson.get_int_member("id");
+      summary = responseJson.get_string_member("summary");
+      body = responseJson.get_string_member("body");
+      application = responseJson.get_string_member("application");
+      urgency = responseJson.get_int_member("urgency");
+    } 
+  }
+
   public class Client {
     private Socket socket;
-    private uint8[] terminator = { '\0' };
-    private int bytes_to_payload = 14;
-    private int buffer_size = 1024 * 128;
+    private int buffer_size = 1024 * 512;
 
-    public Client(string i3Socket) throws GLib.Error {
-      var socketAddress = new UnixSocketAddress(i3Socket);
+    public Client(string socket_str) throws GLib.Error {
+      var socketAddress = new UnixSocketAddress(socket_str);
 
       socket = new Socket (SocketFamily.UNIX, SocketType.STREAM, SocketProtocol.DEFAULT);
       assert (socket != null);
@@ -32,20 +47,50 @@ namespace Lago {
       }
     }
 
-    public string get_notification_count() throws ROFICATION_ERROR, GLib.Error {
-      ssize_t sent = socket.send("num\n".data);
+    public List<NotificationDesc> get_notifications() throws ROFICATION_ERROR, GLib.Error {
+      ssize_t sent = socket.send("list\n".data);
 
-      debug("Sent " + sent.to_string() + " bytes to i3.\n");
+      debug("Sent " + sent.to_string() + " bytes to notification backend.\n");
 
       uint8[] buffer = new uint8[buffer_size];
 
       ssize_t len = socket.receive (buffer);
 
-      debug("Received  " + len.to_string() + " bytes from i3.\n");
+      debug("Received  " + len.to_string() + " bytes from notification backend.\n");
 
-      //Bytes responseBytes = new Bytes.take(buffer[0:len]);
+      string payload = (string) buffer;
+      Json.Parser parser = new Json.Parser();
+      parser.load_from_data(payload);
 
-      return (string) buffer;
+      var doc = parser.get_root().get_array ();
+
+      var list = new List<NotificationDesc> ();
+
+      foreach (var notificationDoc in doc.get_elements ()) {
+         list.append(new NotificationDesc(notificationDoc.get_object ()));
+      }
+
+      return list;
     }
+
+    public void delete_notification_by_id(int64 id) throws GLib.Error {
+      var message = "del:" + id.to_string() + "\n";
+      debug(message);
+
+      ssize_t sent = socket.send(message.data);
+
+      debug("Sent " + sent.to_string() + " bytes to notification backend.\n");
+    }
+
+    public void delete_notification_by_app(string app) throws GLib.Error {
+      ssize_t sent = socket.send(("dela:" + app + "\n").data);
+
+      debug("Sent " + sent.to_string() + " bytes to notification backend.\n");
+    }
+
+
+    
+
   }
+  
 }
