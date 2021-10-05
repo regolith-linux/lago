@@ -18,46 +18,52 @@ namespace Lago {
             return 0;
         }
 
-        if (args.contains ("-h") || args.contains ("--help") || (!args.contains ("-ls") && !args.contains ("-rm") && !args.contains ("-clear"))) {
+        if (args.contains ("-h") || args.contains ("--help") || raw_args.length < 2) {
             print_usage ();
             return 0;
         }
 
         if (args.contains ("-s")) socket_uri = args.lookup ("-s");
+        var command = raw_args[1];
 
         try {
             Client client = new Client (socket_uri);
 
-            if (args.contains ("-ls")) {
-                var notifications = client.get_notifications ();
+            switch (command) {
+                case "ls":
+                    var notifications = client.get_notifications ();
 
-                foreach (var notification in notifications) {
-                    stdout.printf ("%" + uint64.FORMAT_MODIFIER + "d %s %s %s urgency: %" + uint64.FORMAT_MODIFIER + "d\n", notification.id, notification.application, notification.summary, notification.body, notification.urgency);
-                }
-            } else if (args.contains ("-rm")) {
-                var modifier = args.lookup ("-rm");
-
-                if (modifier != null) {
-                    var id = int64.parse (modifier);
-
-                    if (id == 0) {
-                        client.delete_notification_by_app (modifier);
-                    } else {
-                        client.delete_notification_by_id (id);
+                    foreach (var notification in notifications) {
+                        stdout.printf ("%" + uint64.FORMAT_MODIFIER + "d %s %s %s urgency: %" + uint64.FORMAT_MODIFIER + "d\n", notification.id, notification.application, notification.summary, notification.body, notification.urgency);
                     }
-                } else {
-                    print_usage ();
-                    return 0;
-                }
-            } else if (args.contains ("-clear")) {
-                var notifications = client.get_notifications ();
+                    break;
+                case "rm":
+                    var modifier = raw_args[2];
 
-                foreach (var notification in notifications) {
-                    var client2 = new Client (socket_uri);
-                    client2.delete_notification_by_id (notification.id);
-                }
-            } else {
-                print_usage ();
+                    if (modifier != null) {
+                        var id = int64.parse (modifier);
+
+                        if (id == 0) {
+                            client.delete_notification_by_app (modifier);
+                        } else {
+                            client.delete_notification_by_id (id);
+                        }
+                    } else {
+                        print_usage ();
+                        return 0;
+                    }
+                    break;
+                case "clear":
+                    var notifications = client.get_notifications ();
+
+                    foreach (var notification in notifications) {
+                        var client2 = new Client (socket_uri);
+                        client2.delete_notification_by_id (notification.id);
+                    }
+                    break;
+                default:
+                    print_usage ();
+                    return 1;
             }
         } catch (GLib.Error err) {
             error (err.message);
@@ -69,7 +75,7 @@ namespace Lago {
     void print_usage () {
         print ("""
         Usage:
-        lago (-ls) (-rm <id> | <application>) (-clear)
+        lago [ ls | rm <id> | rm <app> | clear ]
         
         Help Options:
         -h, --help                           Show help options
@@ -102,25 +108,25 @@ namespace Lago {
             return arg_hashtable;
         }
 
-        string lastKey = null;
+        string last_key = null;
         foreach (string token in args) {
             if (!arg_hashtable.contains ("cmd")) {
                 arg_hashtable.set ("cmd", token);
-            } else if (isKey (token)) {
-                if (lastKey != null) {
-                    arg_hashtable.set (lastKey, null);
+            } else if (is_key (token)) {
+                if (last_key != null) {
+                    arg_hashtable.set (last_key, null);
                 }
-                lastKey = token;
-            } else if (lastKey != null) {
-                arg_hashtable.set (lastKey, token);
-                lastKey = null;
+                last_key = token;
+            } else if (last_key != null) {
+                arg_hashtable.set (last_key, token);
+                last_key = null;
             } else {
-                throw new ArgParser.PARSE_ERROR (@"Unexpected literal: $token\n");
+                // ignore              
             }
         }
 
-        if (lastKey != null) { // Trailing single param
-            arg_hashtable.set (lastKey, null);
+        if (last_key != null) { // Trailing single param
+            arg_hashtable.set (last_key, null);
         }
         /*
            foreach (var key in arg_hashtable.get_keys ()) {
@@ -128,11 +134,10 @@ namespace Lago {
            }
          */
 
-
         return arg_hashtable;
     }
 
-    bool isKey (string inval) {
+    bool is_key (string inval) {
         return inval.has_prefix ("-");
     }
 }

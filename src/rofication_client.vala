@@ -1,5 +1,7 @@
 /**
- * A client library for rofication
+ * A client library for rofication.
+ * 
+ * This client, once constructed, can only send one command.
  */
 namespace Lago {
     enum ROFICATION_COMMAND {
