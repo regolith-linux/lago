@@ -4,6 +4,20 @@ A command line interface to the [Rofication desktop notification system](https:/
 
 ## Usage
 
+```bash
+src/lago -h
+
+        Usage:
+        lago [ ls | rm <id> | rm <app> | clear ]
+        
+        Help Options:
+        -h, --help                           Show help options
+        
+        Application Options:
+        -v, --version                        Display version number
+        -s <Socket URI>                      Socket path to connect to notification server
+```
+
 ### List Notifications
 
 ```bash
