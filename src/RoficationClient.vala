@@ -8,10 +8,6 @@ namespace Lago {
         COUNT
     }
 
-    public errordomain ROFICATION_ERROR {
-        RPC_ERROR
-    }
-
     public class NotificationDesc {
         public int64 id { get; private set; }
         public string summary { get; private set; }
@@ -30,39 +26,28 @@ namespace Lago {
     }
 
     public class Client {
-        private Socket socket;
+        private UnixSocketAddress socket_addr;
         private int buffer_size = 1024 * 512;
 
         public Client (string socket_str) throws GLib.Error {
-            var socketAddress = new UnixSocketAddress (socket_str);
-
-            socket = new Socket (SocketFamily.UNIX, SocketType.STREAM, SocketProtocol.DEFAULT);
-            assert (socket != null);
-
-            socket.connect (socketAddress);
-            socket.set_blocking (true);
+            this.socket_addr = new UnixSocketAddress (socket_str);
         }
 
-        ~Client () {
-            if (socket != null) {
-                socket.close ();
-            }
-        }
+        public List<NotificationDesc> get_notifications () throws GLib.Error {
+            var socket = open_socket (socket_addr);
 
-        public List<NotificationDesc> get_notifications () throws ROFICATION_ERROR, GLib.Error {
             ssize_t sent = socket.send ("list\n".data);
-
             debug ("Sent " + sent.to_string () + " bytes to notification backend.\n");
-
+            
             uint8[] buffer = new uint8[buffer_size];
-
             ssize_t len = socket.receive (buffer);
-
             debug ("Received  " + len.to_string () + " bytes from notification backend.\n");
 
             string payload = (string) buffer;
 
-            stdout.printf("%s\n", payload);
+            socket.close ();
+
+            // stdout.printf("%s\n", payload);
 
             Json.Parser parser = new Json.Parser ();
             parser.load_from_data (payload);
@@ -79,18 +64,32 @@ namespace Lago {
         }
 
         public void delete_notification_by_id (int64 id) throws GLib.Error {
+            var socket = open_socket (socket_addr);
             var message = "del:" + id.to_string () + "\n";
             debug (message);
 
             ssize_t sent = socket.send (message.data);
 
             debug ("Sent " + sent.to_string () + " bytes to notification backend.\n");
+            socket.close ();
         }
 
         public void delete_notification_by_app (string app) throws GLib.Error {
+            var socket = open_socket (socket_addr);
             ssize_t sent = socket.send (("dela:" + app + "\n").data);
 
             debug ("Sent " + sent.to_string () + " bytes to notification backend.\n");
+            socket.close ();
+        }
+
+        private Socket open_socket(UnixSocketAddress addr) throws GLib.Error {
+            var socket = new Socket (SocketFamily.UNIX, SocketType.STREAM, SocketProtocol.DEFAULT);
+            assert (socket != null);
+
+            socket.connect (addr);
+            socket.set_blocking (true);
+
+            return socket;
         }
     }
 }

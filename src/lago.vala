@@ -56,9 +56,8 @@ namespace Lago {
                 case "clear":
                     var notifications = client.get_notifications ();
 
-                    foreach (var notification in notifications) {
-                        var client2 = new Client (socket_uri);
-                        client2.delete_notification_by_id (notification.id);
+                    foreach (var notification in notifications) {                        
+                        client.delete_notification_by_id (notification.id);
                     }
                     break;
                 default:

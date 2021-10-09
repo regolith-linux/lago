@@ -18,7 +18,7 @@ lago_deps += [gio_2_0_dep]
 lago_deps += [glib_2_0_dep]
 lago_deps += [gobject_2_0_dep]
 lago_sources = [cfgfile_1]
-lago_sources += ['rofication_client.vala']
+lago_sources += ['RoficationClient.vala']
 lago_sources += ['lago.vala']
 lago_link_args = ['-rdynamic']
 
