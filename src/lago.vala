@@ -34,7 +34,7 @@ namespace Lago {
                     var notifications = client.get_notifications ();
 
                     foreach (var notification in notifications) {
-                        stdout.printf ("%" + uint64.FORMAT_MODIFIER + "d %s %s %s urgency: %" + uint64.FORMAT_MODIFIER + "d\n", notification.id, notification.application, notification.summary, notification.body, notification.urgency);
+                        stdout.printf ("[%" + uint64.FORMAT_MODIFIER + "d] %s (%s) - %s \n\t%s\n", notification.id, notification.application, fmt_urgency(notification.urgency), notification.summary, notification.body);
                     }
                     break;
                 case "rm":
@@ -70,6 +70,16 @@ namespace Lago {
         }
 
         return 0;
+    }
+
+    // https://specifications.freedesktop.org/notification-spec/notification-spec-latest.html#urgency-levels
+    private string fmt_urgency(int64 urgency) {
+        switch (urgency) {
+            case 0: return "Low";
+            case 1: return "Normal";
+            case 2: return "Critical";
+            default: return "Unknown";
+        }
     }
 
     void print_usage () {
