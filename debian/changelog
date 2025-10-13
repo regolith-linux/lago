@@ -1,3 +1,10 @@
+lago (0.2.0-2) focal; urgency=medium
+
+  [ Khosrow Moossavi ]
+  * feat: use build-only to test pull request
+
+ -- Regolith Linux <regolith.linux@gmail.com>  Mon, 13 Oct 2025 18:26:58 +0000
+
 lago (0.2.0-1) focal; urgency=medium
 
   [ Ken Gilmer ]
