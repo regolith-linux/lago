@@ -1,27 +1,17 @@
 Source: lago
-Section: x11
-Priority: optional
+Section: utils
 Maintainer: Ken Gilmer <kgilmer@gmail.com>
-Build-Depends: debhelper (>= 10),
-               gettext,
-               libgtk-3-dev (>= 3.22),
+Build-Depends: debhelper-compat (= 13),
                meson,
+               valac,
                libglib2.0-dev,
-               libjsonrpc-glib-1.0-dev,
-               valac-0.56-vapi,
-               gir1.2-gee-0.8,
-               po-debconf, 
-               valac-bin, 
-               intltool
-Standards-Version: 4.1.2
+               libjson-glib-dev
+Standards-Version: 4.7.2
 Homepage: https://github.com/regolith-linux/lago
 
 Package: lago
 Architecture: any
-Depends: 
-  ${shlibs:Depends}, 
-  ${misc:Depends},
-  libjsonrpc-glib-1.0-dev
-Description: Rofication CLI
- Manage desktop notifications from the terminal.
-
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: command-line client for the Rofication notification daemon
+ Lists and dismisses desktop notifications held by rofication-daemon
+ (regolith-rofication) from the terminal.
