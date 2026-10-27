@@ -5,7 +5,7 @@ cfg_lago.set('GETTEXT_PACKAGE', 'lago')
 cfg_lago.set('RELEASE_NAME', 'lago')
 cfg_lago.set('PREFIX', get_option('prefix'))
 cfg_lago.set('VERSION', '0.1.0')
-cfg_lago.set('TESTSRCDIR', meson.source_root())
+cfg_lago.set('TESTSRCDIR', meson.project_source_root())
 
 cfgfile_1 = configure_file(
 	input: 'Config.vala.base',
