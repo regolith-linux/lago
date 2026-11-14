@@ -1,3 +1,10 @@
+lago (0.2.0-3) focal; urgency=medium
+
+  [ rego-port-bot ]
+  * fix(debian): drop the -dev runtime dependency and clean up packaging
+
+ -- Regolith Linux <regolith.linux@gmail.com>  Fri, 13 Nov 2026 19:34:49 -0800
+
 lago (0.2.0-2) focal; urgency=medium
 
   [ Khosrow Moossavi ]
