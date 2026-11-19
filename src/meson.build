@@ -13,11 +13,11 @@ cfgfile_1 = configure_file(
 	configuration: cfg_lago)
 
 lago_deps = [gio_unix_2_0_dep]
-lago_deps += [json_glib_1_0_dep]
 lago_deps += [gio_2_0_dep]
 lago_deps += [glib_2_0_dep]
 lago_deps += [gobject_2_0_dep]
 lago_sources = [cfgfile_1]
+lago_sources += ['ReplyParser.vala']
 lago_sources += ['RoficationClient.vala']
 lago_sources += ['lago.vala']
 lago_link_args = ['-rdynamic']

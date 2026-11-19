@@ -2,61 +2,92 @@
 namespace Lago {
     int main (string[] raw_args) {
         var socket_uri = "/tmp/rofi_notification_daemon";
+        bool show_help = false;
+        bool show_version = false;
+        bool options_done = false;
+        string[] operands = {};
 
-        HashTable<string, string ? > args;
+        // Options may appear anywhere; "--" makes every later argument an operand.
+        for (int i = 1; i < raw_args.length; i++) {
+            var arg = raw_args[i];
 
-        try {
-            args = parse_args (raw_args);
-        } catch (Error e) {
-            printerr ("error: %s\n", e.message);
-            printerr ("Run '%s --help' to see a full list of available command line options.\n", raw_args[0]);
-            return 1;
+            if (options_done || arg == "-" || !arg.has_prefix ("-")) {
+                operands += arg;
+                continue;
+            }
+
+            switch (arg) {
+                case "--":
+                    options_done = true;
+                    break;
+                case "-s":
+                    if (i + 1 >= raw_args.length) {
+                        return fail ("option '-s' needs a socket path");
+                    }
+                    socket_uri = raw_args[++i];
+                    break;
+                case "-h":
+                case "--help":
+                    show_help = true;
+                    break;
+                case "-v":
+                case "--version":
+                    show_version = true;
+                    break;
+                default:
+                    return fail ("unknown option '%s'".printf (arg));
+            }
         }
 
-        if (args.contains ("-v") || args.contains ("--version")) {
+        if (show_version) {
             print ("lago 0.1.0 (C) 2021 Ken Gilmer\n");
             return 0;
         }
 
-        if (args.contains ("-h") || args.contains ("--help") || raw_args.length < 2) {
+        if (show_help || operands.length == 0) {
             print_usage ();
             return 0;
         }
 
-        if (args.contains ("-s")) socket_uri = args.lookup ("-s");
-        var command = raw_args[1];
+        var command = operands[0];
 
         try {
             Client client = new Client (socket_uri);
 
             switch (command) {
                 case "ls":
+                    if (operands.length > 1) return fail ("'ls' takes no operand");
+
                     var notifications = client.get_notifications ();
 
                     foreach (var notification in notifications) {
-                        stdout.printf ("[%" + uint64.FORMAT_MODIFIER + "d] %s (%s) - %s \n\t%s\n", notification.id, notification.application, fmt_urgency(notification.urgency), notification.summary, notification.body);
+                        stdout.printf ("[%s] %s (%s) - %s \n", notification.id, notification.application, fmt_urgency (notification.urgency), notification.summary);
+                        print_body (notification.body);
                     }
+                    stdout.flush ();
+                    if (stdout.error () != 0) return fail ("cannot write the listing");
                     break;
                 case "rm":
-                    var modifier = raw_args[2];
+                    if (operands.length != 2) return fail ("'rm' takes exactly one notification id or application name");
 
-                    if (modifier != null) {
-                        var id = int64.parse (modifier);
+                    var modifier = operands[1];
 
-                        if (id == 0) {
-                            client.delete_notification_by_app (modifier);
-                        } else {
-                            client.delete_notification_by_id (id);
-                        }
+                    if (modifier.strip () == "") return fail ("'rm' needs a notification id or application name that is not blank");
+                    if ("\n" in modifier) return fail ("'rm' cannot dismiss an application name holding a newline");
+
+                    var id = parse_id (modifier);
+                    if (id != null) {
+                        client.delete_notification_by_id (id);
                     } else {
-                        print_usage ();
-                        return 0;
+                        client.delete_notification_by_app (modifier);
                     }
                     break;
                 case "clear":
+                    if (operands.length > 1) return fail ("'clear' takes no operand");
+
                     var notifications = client.get_notifications ();
 
-                    foreach (var notification in notifications) {                        
+                    foreach (var notification in notifications) {
                         client.delete_notification_by_id (notification.id);
                     }
                     break;
@@ -64,11 +95,68 @@ namespace Lago {
                     print_usage ();
                     return 1;
             }
-        } catch (GLib.Error err) {
-            error (err.message);
+        } catch (ClientError err) {
+            return fail (err.message);
         }
 
         return 0;
+    }
+
+    /**
+     * Reports a failure as a single line on stderr and returns the exit status.
+     */
+    int fail (string message) {
+        var line = new StringBuilder ("lago: ");
+
+        // Arguments and paths are echoed: keep control characters from breaking the line.
+        for (int i = 0; i < message.length; i++) {
+            uchar c = (uchar) message[i];
+            if (c < 0x20 || c == 0x7f) {
+                line.append_printf ("\\x%02x", c);
+            } else {
+                line.append_c ((char) c);
+            }
+        }
+        line.append_c ('\n');
+        printerr ("%s", line.str);
+
+        return 1;
+    }
+
+    /**
+     * An operand made only of ASCII digits names a notification id when it fits
+     * a signed 64-bit integer. Returns the id in decimal, or null for an
+     * application name.
+     */
+    string? parse_id (string operand) {
+        for (int i = 0; i < operand.length; i++) {
+            if (!(operand[i] >= '0' && operand[i] <= '9')) return null;
+        }
+
+        int start = 0;
+        while (start < operand.length - 1 && operand[start] == '0') start++;
+        var digits = operand.substring (start);
+
+        var max = int64.MAX.to_string ();
+        if (digits.length > max.length || (digits.length == max.length && strcmp (digits, max) > 0)) {
+            return null;
+        }
+
+        return digits;
+    }
+
+    /**
+     * Prints each line of the body on its own line, preceded by a tab.
+     */
+    void print_body (string body) {
+        int start = 0;
+        int end;
+
+        while ((end = body.index_of_char ('\n', start)) >= 0) {
+            stdout.printf ("\t%s\n", body.substring (start, end - start));
+            start = end + 1;
+        }
+        stdout.printf ("\t%s\n", body.substring (start));
     }
 
     // https://specifications.freedesktop.org/notification-spec/notification-spec-latest.html#urgency-levels
@@ -95,58 +183,5 @@ namespace Lago {
         """);
 
         print ("\n");
-    }
-
-    /**
-     * A lazy/minimal command-line arg parser because OptionContext segfaults.
-     */
-
-    errordomain ArgParser {
-        PARSE_ERROR
-    }
-
-    /**
-     * Convert ["-v", "-s", "asdf", "-f", "qwe"] => {("-v", null), ("-s", "adsf"), ("-f", "qwe")}
-     * Populates key of "cmd" with first arg.
-     * NOTE: Currently does not support quoted parameter values.
-     */
-    HashTable<string, string ? > parse_args (string[] args) throws ArgParser.PARSE_ERROR {
-        var arg_hashtable = new HashTable<string, string ? >(str_hash, str_equal);
-
-        if (args == null || args.length == 0) {
-            return arg_hashtable;
-        }
-
-        string last_key = null;
-        foreach (string token in args) {
-            if (!arg_hashtable.contains ("cmd")) {
-                arg_hashtable.set ("cmd", token);
-            } else if (is_key (token)) {
-                if (last_key != null) {
-                    arg_hashtable.set (last_key, null);
-                }
-                last_key = token;
-            } else if (last_key != null) {
-                arg_hashtable.set (last_key, token);
-                last_key = null;
-            } else {
-                // ignore              
-            }
-        }
-
-        if (last_key != null) { // Trailing single param
-            arg_hashtable.set (last_key, null);
-        }
-        /*
-           foreach (var key in arg_hashtable.get_keys ()) {
-           stdout.printf ("%s => %s\n", key, arg_hashtable.lookup(key));
-           }
-         */
-
-        return arg_hashtable;
-    }
-
-    bool is_key (string inval) {
-        return inval.has_prefix ("-");
     }
 }
