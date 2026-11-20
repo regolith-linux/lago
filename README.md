@@ -24,11 +24,15 @@ src/lago -h
 lago ls
 ```
 
+Each notification is printed as `[<id>] <application> (<urgency>) - <summary>`, followed by its body, one tab-indented line per body line.
+
 ### Delete Notification by ID
 
 ```bash
 lago rm 4
 ```
+
+An operand made only of digits that fits a signed 64-bit integer is a notification ID. Anything else is an application name.
 
 ### Delete Notification by Source
 
@@ -41,6 +45,18 @@ lago rm Slack
 ```bash
 lago clear
 ```
+
+### Use Another Socket
+
+```bash
+lago -s /path/to/socket ls
+```
+
+Options can come before or after the command. Arguments after `--` are never read as options.
+
+If the daemon can't be reached, stops answering for 3 seconds, or sends a reply lago can't read, lago prints one `lago: ` line on stderr and exits with status 1.
+
+When nothing reads lago's output any more, as in `lago ls | head -1`, lago is ended quietly by SIGPIPE, like other command-line tools.
 
 ## Compatibility
 

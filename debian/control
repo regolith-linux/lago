@@ -4,8 +4,7 @@ Maintainer: Ken Gilmer <kgilmer@gmail.com>
 Build-Depends: debhelper-compat (= 13),
                meson,
                valac,
-               libglib2.0-dev,
-               libjson-glib-dev
+               libglib2.0-dev
 Standards-Version: 4.7.2
 Homepage: https://github.com/regolith-linux/lago
 
