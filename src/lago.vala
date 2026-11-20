@@ -60,6 +60,7 @@ namespace Lago {
 
                     var notifications = client.get_notifications ();
 
+                    restore_default_sigpipe ();
                     foreach (var notification in notifications) {
                         stdout.printf ("[%s] %s (%s) - %s \n", notification.id, notification.application, fmt_urgency (notification.urgency), notification.summary);
                         print_body (notification.body);
@@ -118,9 +119,21 @@ namespace Lago {
             }
         }
         line.append_c ('\n');
+        restore_default_sigpipe ();
         printerr ("%s", line.str);
 
         return 1;
+    }
+
+    /**
+     * GSocket sets SIGPIPE to ignored for the whole process when lago opens
+     * its first socket. lago writes its output only after the daemon
+     * exchange, so the default is put back before writing: when nothing reads
+     * the output any more (lago ls | head -1), lago ends quietly by SIGPIPE,
+     * as it already does for the help and version text.
+     */
+    void restore_default_sigpipe () {
+        Posix.signal (Posix.Signal.PIPE, Posix.SIG_DFL);
     }
 
     /**
